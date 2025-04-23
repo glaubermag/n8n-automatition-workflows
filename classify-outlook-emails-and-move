@@ -1,0 +1,443 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Você é um assistente de classificação de e-mails integrado a um fluxo de automação no n8n. Sua tarefa é analisar o assunto, o remetente e o conteúdo de e-mails não lidos recebidos via Microsoft Outlook e classificá-los em uma das seguintes categorias:\n\n- SPAM: E-mails não solicitados, golpes, phishing, propagandas indesejadas.\n- NEWSLETTER: Assinaturas, promoções, atualizações não urgentes de empresas ou serviços.\n- IMPORTANTE: E-mails pessoais, relacionados ao trabalho ou que exigem ação urgente.\n- CONTAS: Contas a pagar, faturas, lembretes de pagamento, extratos bancários.\n\nLembre-se: Você tem como memória o banco MongoDB, use ele para aperfeiçoar seu trabalho (salvando e analisando dados)\n\nAnalise cuidadosamente o assunto, o remetente e o conteúdo para determinar a categoria mais apropriada. Se o e-mail puder se encaixar em mais de uma categoria, priorize a que melhor reflete o objetivo principal do conteúdo. A resposta deve estar em português.\n\nRetorne o resultado no formato JSON, com:\n- \"classificacao\": o nome da categoria em MAIÚSCULAS (SPAM, NEWSLETTER, IMPORTANTE ou CONTAS).\n- \"justificativa\": uma explicação breve (máximo de 50 palavras) da escolha.\n\nExemplos:\n1. Assunto: \"Ganhe 1 milhão agora!\"\n   De: \"Promoções Incríveis\" <promocoes@desconhecido.com>\n   Conteúdo: \"Clique aqui para reivindicar seu prêmio!\"\n   Resposta: {\"classificacao\": \"SPAM\", \"justificativa\": \"E-mail não solicitado com promessa suspeita de ganho.\"}\n\n2. Assunto: \"Reunião urgente amanhã\"\n   De: \"João Silva\" <joao.silva@empresa.com>\n   Conteúdo: \"Precisamos discutir o projeto às 9h.\"\n   Resposta: {\"classificacao\": \"IMPORTANTE\", \"justificativa\": \"E-mail de trabalho exigindo ação urgente.\"}\n\nClassifique o e-mail abaixo:\n\nAssunto: {{ $json.subject }}\nDe: {{ $json.sender.emailAddress.name }} <{{ $json.sender.emailAddress.address }}>\nConteúdo: {{ $json.body.content }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -1600,
+        -1180
+      ],
+      "id": "eaa7b0f5-c338-4a0f-bdc3-c0f6291751d0",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.id }}",
+        "databaseName": "mydb"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryMongoDbChat",
+      "typeVersion": 1,
+      "position": [
+        -1440,
+        -840
+      ],
+      "id": "b1574c2f-97d6-4f3d-9fb9-1c42b19f4c5e",
+      "name": "MongoDB Chat Memory",
+      "credentials": {
+        "mongoDb": {
+          "id": "kW89IIDa7Wh9nnBR",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.classificacao }}",
+                    "rightValue": "IMPORTANTE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "99ded96c-1fe4-4d7b-abd8-b42f25711388"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "=IMPORTANTE"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e9782f3a-6e65-4cda-884d-de4607a6afdd",
+                    "leftValue": "={{ $json.classificacao }}",
+                    "rightValue": "NEWSLETTER",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "NEWSLETTER"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "0621279d-1515-4154-9057-1d475af614b7",
+                    "leftValue": "={{ $json.classificacao }}",
+                    "rightValue": "CONTAS",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "CONTAS"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "c552ec95-23d3-4eb9-a892-d4030e76d789",
+                    "leftValue": "={{ $json.classificacao }}",
+                    "rightValue": "=SPAM",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "SPAM"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -920,
+        -1180
+      ],
+      "id": "fc426d84-ba5e-4866-9444-0096cd1c8d58",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "messageId": {
+          "__rl": true,
+          "value": "= {{ $('Microsoft Outlook Trigger').item.json.id }}",
+          "mode": "id"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "AQMkADAwATMwMAItOWYyMgAtZTZhMi0wMAItMDAKAC4AAAMF1jQzOK9VS4xL6XS9la3xAQCwHh-Fj0RpQIb1FRH-MybTAAf8Ifp_AAAA",
+          "mode": "list",
+          "cachedResultName": "Importante",
+          "cachedResultUrl": "https://outlook.office365.com/mail/AQMkADAwATMwMAItOWYyMgAtZTZhMi0wMAItMDAKAC4AAAMF1jQzOK9VS4xL6XS9la3xAQCwHh%2FFj0RpQIb1FRH%2FMybTAAf8Ifp_AAAA"
+        }
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        -280,
+        -1220
+      ],
+      "id": "ddf5c179-24b0-4d36-980d-b41c15439b0a",
+      "name": "Mover para Importante",
+      "webhookId": "01eee711-b879-4d5c-b1b5-1190df1f6453",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "mI6lGrDQPjPTOSog",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "messageId": {
+          "__rl": true,
+          "value": "= {{ $('Microsoft Outlook Trigger').item.json.id }}",
+          "mode": "id"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "AQMkADAwATMwMAItOWYyMgAtZTZhMi0wMAItMDAKAC4AAAMF1jQzOK9VS4xL6XS9la3xAQCwHh-Fj0RpQIb1FRH-MybTAAf8Ifp-AAAA",
+          "mode": "list",
+          "cachedResultName": "Newsletter",
+          "cachedResultUrl": "https://outlook.office365.com/mail/AQMkADAwATMwMAItOWYyMgAtZTZhMi0wMAItMDAKAC4AAAMF1jQzOK9VS4xL6XS9la3xAQCwHh%2FFj0RpQIb1FRH%2FMybTAAf8Ifp%2FAAAA"
+        }
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        -280,
+        -1060
+      ],
+      "id": "52b1a202-8a7a-467f-9590-c05ab74da883",
+      "name": "Mover para Newsletter",
+      "webhookId": "01eee711-b879-4d5c-b1b5-1190df1f6453",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "mI6lGrDQPjPTOSog",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "messageId": {
+          "__rl": true,
+          "value": "= {{ $('Microsoft Outlook Trigger').item.json.id }}",
+          "mode": "id"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "AQMkADAwATMwMAItOWYyMgAtZTZhMi0wMAItMDAKAC4AAAMF1jQzOK9VS4xL6XS9la3xAQCwHh-Fj0RpQIb1FRH-MybTAAf8IfqAAAAA",
+          "mode": "list",
+          "cachedResultName": "Contas",
+          "cachedResultUrl": "https://outlook.office365.com/mail/AQMkADAwATMwMAItOWYyMgAtZTZhMi0wMAItMDAKAC4AAAMF1jQzOK9VS4xL6XS9la3xAQCwHh%2FFj0RpQIb1FRH%2FMybTAAf8IfqAAAAA"
+        }
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        -280,
+        -900
+      ],
+      "id": "575985d0-9234-492a-822f-93add1ab7d11",
+      "name": "Mover para Contas",
+      "webhookId": "01eee711-b879-4d5c-b1b5-1190df1f6453",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "mI6lGrDQPjPTOSog",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "messageId": {
+          "__rl": true,
+          "value": "= {{ $('Microsoft Outlook Trigger').item.json.id }}",
+          "mode": "id"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "AQMkADAwATMwMAItOWYyMgAtZTZhMi0wMAItMDAKAC4AAAMF1jQzOK9VS4xL6XS9la3xAQCwHh-Fj0RpQIb1FRH-MybTAAf8Ifp9AAAA",
+          "mode": "list",
+          "cachedResultName": "Spam_N8N",
+          "cachedResultUrl": "https://outlook.office365.com/mail/AQMkADAwATMwMAItOWYyMgAtZTZhMi0wMAItMDAKAC4AAAMF1jQzOK9VS4xL6XS9la3xAQCwHh%2FFj0RpQIb1FRH%2FMybTAAf8Ifp9AAAA"
+        }
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        -280,
+        -740
+      ],
+      "id": "63515cc2-c445-47fd-bf8d-b1f1080213d0",
+      "name": "Mover para Spam",
+      "webhookId": "01eee711-b879-4d5c-b1b5-1190df1f6453",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "mI6lGrDQPjPTOSog",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1620,
+        -880
+      ],
+      "id": "c5642346-5b3e-4879-b7cc-4bff3dea0ebb",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "zKVMH1dfhjkjaGLL",
+          "name": "Gmag Con ApiKey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const jsonString = $input.first().json.output\nconst cleanedString = jsonString.replace(/```json\\n?|\\n?```/g, '').trim();\nconst jsonObject = JSON.parse(cleanedString);\nreturn jsonObject;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1160,
+        -1160
+      ],
+      "id": "3bcddd90-f167-40b9-8ac0-4a79ac8f7963",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "output": "raw",
+        "filters": {
+          "foldersToInclude": [
+            "AQMkADAwATMwMAItOWYyMgAtZTZhMi0wMAItMDAKAC4AAAMF1jQzOK9VS4xL6XS9la3xAQCwHh-Fj0RpQIb1FRH-MybTAAACAQwAAAA="
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlookTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1900,
+        -1180
+      ],
+      "id": "7766466e-051d-4827-b169-be23ffad2bfa",
+      "name": "Microsoft Outlook Trigger",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "mI6lGrDQPjPTOSog",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MongoDB Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Mover para Importante",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mover para Newsletter",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mover para Contas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mover para Spam",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft Outlook Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d45ebc733dd4bee7ba20b1bf193510bf032d0574f54d2c427d94685201b3ead2"
+  }
+}
